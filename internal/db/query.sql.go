@@ -26,17 +26,23 @@ func (q *Queries) CreateCategory(ctx context.Context, arg CreateCategoryParams) 
 }
 
 const createCourse = `-- name: CreateCourse :exec
-INSERT INTO courses (id, name, description) VALUES ($1, $2, $3) RETURNING id, category_id, name, description, price
+INSERT INTO courses (id, name, description, price) VALUES ($1, $2, $3, $4) RETURNING id, category_id, name, description, price
 `
 
 type CreateCourseParams struct {
 	ID          string
 	Name        string
 	Description sql.NullString
+	Price       string
 }
 
 func (q *Queries) CreateCourse(ctx context.Context, arg CreateCourseParams) error {
-	_, err := q.db.ExecContext(ctx, createCourse, arg.ID, arg.Name, arg.Description)
+	_, err := q.db.ExecContext(ctx, createCourse,
+		arg.ID,
+		arg.Name,
+		arg.Description,
+		arg.Price,
+	)
 	return err
 }
 
@@ -77,6 +83,50 @@ func (q *Queries) ListCategories(ctx context.Context) ([]Category, error) {
 	for rows.Next() {
 		var i Category
 		if err := rows.Scan(&i.ID, &i.Name, &i.Description); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listCourses = `-- name: ListCourses :many
+SELECT c.id, c.category_id, c.name, c.description, c.price, ca.name as category_name 
+FROM courses c JOIN categories ca ON c.category_id = ca.id
+`
+
+type ListCoursesRow struct {
+	ID           string
+	CategoryID   string
+	Name         string
+	Description  sql.NullString
+	Price        string
+	CategoryName string
+}
+
+func (q *Queries) ListCourses(ctx context.Context) ([]ListCoursesRow, error) {
+	rows, err := q.db.QueryContext(ctx, listCourses)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListCoursesRow
+	for rows.Next() {
+		var i ListCoursesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.CategoryID,
+			&i.Name,
+			&i.Description,
+			&i.Price,
+			&i.CategoryName,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

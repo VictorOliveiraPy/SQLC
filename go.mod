@@ -6,6 +6,7 @@ require (
 	github.com/golang-migrate/migrate v3.5.4+incompatible
 	github.com/golang-migrate/migrate/v4 v4.15.2
 	github.com/google/uuid v1.3.0
+	github.com/mattes/migrate v3.0.1+incompatible
 )
 
 require (
